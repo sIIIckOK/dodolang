@@ -1,0 +1,74 @@
+     1                                  
+     2                                      ; -- Header --
+     3                                      BITS 64
+     4                                      section .text
+     5                                  
+     6                                      print:
+     7 00000000 31C0                        xor     eax, eax
+     8 00000002 48B9CDCCCCCCCCCCCC-         mov     rcx, -3689348814741910323
+     8 0000000B CC                 
+     9                                      .LBB0_1:
+    10 0000000C 4889C6                      mov     rsi, rax
+    11 0000000F 4889F8                      mov     rax, rdi
+    12 00000012 48F7E1                      mul     rcx
+    13 00000015 48C1EA03                    shr     rdx, 3
+    14 00000019 8D0412                      lea     eax, [rdx + rdx]
+    15 0000001C 8D0480                      lea     eax, [rax + 4*rax]
+    16 0000001F 4189F8                      mov     r8d, edi
+    17 00000022 4129C0                      sub     r8d, eax
+    18 00000025 4180C030                    add     r8b, 48
+    19 00000029 448886[00000000]            mov     [rsi + print_buffer], r8b
+    20 00000030 488D4601                    lea     rax, [rsi + 1]
+    21 00000034 4883FE12                    cmp     rsi, 18
+    22 00000038 7709                        ja      .LBB0_3
+    23 0000003A 4883FF09                    cmp     rdi, 9
+    24 0000003E 4889D7                      mov     rdi, rdx
+    25 00000041 77C9                        ja      .LBB0_1
+    26                                      .LBB0_3:
+    27                                      mov     [rax + print_buffer], 10
+    27          ******************       error: operation size not specified
+    28 00000043 83F801                      cmp     eax, 1
+    29 00000046 741E                        je      .LBB0_6
+    30 00000048 488D88[FFFFFFFF]            lea     rcx, [rax + print_buffer-1]
+    31                                      shr     eax
+    31          ******************       error: invalid combination of opcode and operands
+    32 0000004F 31D2                        xor     edx, edx
+    33                                      .LBB0_5:
+    34                                      movzx   esi, [rcx]
+    34          ******************       error: operation size not specified
+    35                                      movzx   edi, [rdx + print_buffer]
+    35          ******************       error: operation size not specified
+    36 00000051 408839                      mov     [rcx], dil
+    37 00000054 4088B2[00000000]            mov     [rdx + print_buffer], sil
+    38 0000005B 48FFC2                      inc     rdx
+    39 0000005E 48FFC9                      dec     rcx
+    40 00000061 4839C2                      cmp     rdx, rax
+    41 00000064 72EB                        jb      .LBB0_5
+    42                                      .LBB0_6:
+    43 00000066 C3                          ret
+    44                                  
+    45                                      global _start
+    46                                      _start: 
+    47                                                  ; -- int --
+    48 00000067 6A01                                    push qword 1
+    49                                              
+    50                                                  ; -- int --
+    51 00000069 6A02                                    push qword 2
+    52                                              
+    53                                                  ; -- Plus --
+    54 0000006B 58                                      pop rax
+    55 0000006C 5B                                      pop rbx
+    56 0000006D 4801D8                                  add rax, rbx
+    57 00000070 50                                      push rax
+    58                                              
+    59                                                  ; -- Print --
+    60 00000071 E88AFFFFFF                              call print
+    61                                              
+    62                                      ; -- Footer --
+    63 00000076 B83C000000                  mov rax, 60
+    64 0000007B BF00000000                  mov rdi, 0
+    65 00000080 0F05                        syscall
+    66                                  
+    67                                      section .bss
+    68 00000000 <res 15h>                   print_buffer: resb 21
+    69                                      
