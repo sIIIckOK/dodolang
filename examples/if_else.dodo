@@ -1,0 +1,7 @@
+// pop the boolean on top of the stack and branches depending on it
+
+2 1 = if
+    88 print
+else
+    77 print
+end

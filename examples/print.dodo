@@ -1,0 +1,3 @@
+// prints a 64 bit number from the top of the stack
+
+10 print
