@@ -17,9 +17,8 @@ func main() {
 
     flag.Usage = func() {
         fmt.Printf("Usage of %s:\n", os.Args[0])
-        fmt.Println("    [build|run] <source file>")
+        fmt.Println("    build <source file>")
         fmt.Println("        build: compile")
-        fmt.Println("        run:   interpret")
         flag.PrintDefaults()
     }
 
@@ -51,15 +50,13 @@ func main() {
     if subCom == "build" {
         CompileProgram(strTokens, tokens)
         cmd := []string{"nasm", "-g", "-felf64", outPath+".asm"}
-        if _, err := exec.Command(cmd[0], cmd[1:]...).Output(); err != nil {
-            log.Fatalln("ERROR:", err, cmd)
+        if out, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput(); err != nil {
+            log.Fatalln("ERROR:", err, cmd, string(out))
         }
         cmd = []string{"ld", outPath+".o", "-o", outPath}
-        if _, err := exec.Command(cmd[0], cmd[1:]...).Output(); err != nil {
-            log.Fatalln("ERROR:", err, cmd)
+        if out, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput(); err != nil {
+            log.Fatalln("ERROR:", err, cmd, string(out))
         }
-    } else if subCom == "run" {
-        InterpretProgram(strTokens, tokens)
     } 
 }
 
