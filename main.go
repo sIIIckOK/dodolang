@@ -18,10 +18,9 @@ func main() {
     flag.Usage = func() {
         fmt.Printf("Usage of %s:\n", os.Args[0])
         fmt.Println("    build <source file>")
-        fmt.Println("        build: compile")
+        fmt.Println("        build: compile file")
         flag.PrintDefaults()
     }
-
     subCom := flag.Arg(0)
     if subCom != "build" && subCom != "run" {
         flag.Usage()
@@ -57,7 +56,10 @@ func main() {
         if out, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput(); err != nil {
             log.Fatalln("ERROR:", err, cmd, string(out))
         }
-    } 
+    } else {
+        fmt.Printf("Invalid subcommand `%v`\n", subCom)
+        flag.Usage()
+    }
 }
 
 type Location struct {
@@ -114,7 +116,6 @@ const (
     TokenIf
     TokenElse
     TokenEnd
-
     TokenSyscall1
     TokenSyscall3
 
