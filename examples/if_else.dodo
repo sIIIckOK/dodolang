@@ -1,7 +1,16 @@
-// pop the boolean on top of the stack and branches depending on it
+1 0 = if
+    10 print
+else 
+    20 print
+end
 
-2 2 = if
-    88 print
+69 420 < if
+    2 1 - 1 = if
+        33 print
+    else
+        77 print
+    end
+    55 print
 else
-    77 print
+    44 print
 end

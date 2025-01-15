@@ -1,6 +1,0 @@
-// do a linux syscall with one arg (syscall1)
-// the first arg is the syscall number
-
-// sys_exit
-// use echo $? to validate the exit code
-60 1 syscall1
