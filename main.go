@@ -44,6 +44,7 @@ func main() {
     content := string(contentBytes)+string(rune(0))
     strTokens := LexFile(content, filePath)
     tokens := ParseTokens(strTokens)
+    //assert(compileTokensCount == 24, "exhaustive handling of compile functions")
 
     outPath := strings.TrimSuffix(filePath, filepath.Ext(filePath))
     if subCom == "build" {
@@ -117,6 +118,7 @@ const (
     TokenEnd
     TokenSyscall1
     TokenSyscall3
+    // TokenVar
     TokenCount
 )
 
@@ -277,6 +279,9 @@ func ParseTokens(strTokens []StringToken) []Token {
         case "syscall3":
             t.Type = TokenSyscall3
             tokens = append(tokens, t)
+        // case "var":
+        //     t.Type = TokenVar
+        //     tokens = append(tokens, t)
         default:
             if num, err := strconv.ParseUint(tok.Content, 10, 64); err == nil {
                 t.Type = TokenInt
@@ -292,6 +297,277 @@ func ParseTokens(strTokens []StringToken) []Token {
     return tokens
 }
 
+var compileTokensCount uint64 = 0 // for exhaustive handling of compile functions
+
+func compileTokenInt(token Token) string {
+    retStr :=
+    "; -- Int Push --\n"                            +
+    fmt.Sprintf("mov rax, %v\n", token.Operand)     +
+    "push rax\n"
+
+    return retStr
+}
+
+func compileTokenPlus() string {
+    retStr :=
+    "; -- Plus --\n"    +
+    "pop rax\n"         +
+    "pop rbx\n"         +
+    "add rax, rbx\n"    +
+    "push rax\n"
+
+    return retStr
+}
+
+func compileTokenSub() string {
+    retStr :=
+    "; -- Sub --\n"     +
+    "pop rax\n"         +
+    "pop rbx\n"         +
+    "sub rbx, rax\n"    +
+    "push rbx\n"
+
+    return retStr
+}
+
+func compileTokenMul() string {
+    retStr :=
+    "; -- Mul --\n"     +
+    "pop rax\n"         +
+    "pop rbx\n"         +
+    "mul rbx\n"         +
+    "push rax\n"
+
+    return retStr
+}
+
+func compileTokenDivMod() string {
+    retStr :=
+    "; -- DivMod --\n"      +
+    "xor rdx, rdx\n"        +
+    "pop rbx\n"             +
+    "pop rax\n"             +
+    "div rbx\n"             +
+    "push rax\n"            +
+    "push rdx\n"            +
+    ""
+
+    return retStr
+}
+
+func compileTokenPrint() string {
+    retStr :=
+    "; -- Print --\n" +
+    "pop rdi\n"       +
+    "call print\n"
+
+    return retStr
+}
+
+func compileTokenSwap() string {
+    retStr :=
+    "; -- Swap --\n"    +
+    "pop rax\n"         +
+    "pop rbx\n"         +
+    "push rax\n"        +
+    "push rbx\n"
+
+    return retStr
+}
+
+func compileTokenDup() string {
+    retStr :=
+    "; -- Dup --\n"    +
+    "pop rax\n"        +
+    "push rax\n"        +
+    "push rax\n"
+
+    return retStr
+}
+
+func compileTokenDrop() string {
+    retStr :=
+    "; -- Drop --\n"    +
+    "pop rax\n"
+
+    return retStr
+}
+
+func compileTokenGt(state CompileState) string {
+    retStr :=
+    "; -- Gt --\n"      +
+    "pop rbx\n"         +
+    "pop rax\n"         +
+    "cmp rax, rbx\n"    +
+    fmt.Sprintf("jg gt1_%v\n", state.CmpCount)   +
+    "push 0\n"          +
+    fmt.Sprintf("jmp gt2_%v\n", state.CmpCount)   +
+    fmt.Sprintf("gt1_%v:\n", state.CmpCount)   +
+    "push 1\n"          +
+    fmt.Sprintf("gt2_%v:\n", state.CmpCount)   +
+    ""
+
+    return retStr
+}
+
+func compileTokenGe(state CompileState) string {
+    retStr :=
+    "; -- Ge --\n"      +
+    "pop rbx\n"         +
+    "pop rax\n"         +
+    "cmp rax, rbx\n"    +
+    fmt.Sprintf("jge ge1_%v\n", state.CmpCount)   +
+    "push 0\n"          +
+    fmt.Sprintf("jmp ge2_%v\n", state.CmpCount)   +
+    fmt.Sprintf("ge1_%v:\n", state.CmpCount)   +
+    "push 1\n"          +
+    fmt.Sprintf("ge2_%v:\n", state.CmpCount)   +
+    ""
+
+    return retStr
+}
+
+func compileTokenLt(state CompileState) string {
+    retStr :=
+    "; -- Lt --\n"      +
+    "pop rbx\n"         +
+    "pop rax\n"         +
+    "cmp rax, rbx\n"    +
+    fmt.Sprintf("jl lt1_%v\n", state.CmpCount)   +
+    "push 0\n"          +
+    fmt.Sprintf("jmp lt2_%v\n", state.CmpCount)   +
+    fmt.Sprintf("lt1_%v:\n", state.CmpCount)   +
+    "push 1\n"          +
+    fmt.Sprintf("lt2_%v:\n", state.CmpCount)   +
+    ""
+
+    return retStr
+}
+
+func compileTokenLe(state CompileState) string {
+    retStr :=
+    "; -- Le --\n"      +
+    "pop rbx\n"         +
+    "pop rax\n"         +
+    "cmp rax, rbx\n"    +
+    fmt.Sprintf("jle le1_%v\n", state.CmpCount)   +
+    "push 0\n"          +
+    fmt.Sprintf("jmp le2_%v\n", state.CmpCount)   +
+    fmt.Sprintf("le1_%v:\n", state.CmpCount)   +
+    "push 1\n"          +
+    fmt.Sprintf("le2_%v:\n", state.CmpCount)   +
+            ""
+
+    return retStr
+}
+
+
+func compileTokenEq(state CompileState) string {
+    retStr :=
+    "; -- Eq --\n"      +
+    "pop rbx\n"         +
+    "pop rax\n"         +
+    "cmp rax, rbx\n"    +
+    fmt.Sprintf("je eq1_%v\n", state.CmpCount)   +
+    "push 0\n"          +
+    fmt.Sprintf("jmp eq2_%v\n", state.CmpCount)  +
+    fmt.Sprintf("eq1_%v:\n", state.CmpCount)     +
+    "push 1\n"          +
+    fmt.Sprintf("eq2_%v:\n", state.CmpCount)     +
+    ""
+
+    return retStr
+}
+
+func compileTokenFor(state CompileState) string {
+    retStr :=
+    "; -- For --\n"                         +
+    fmt.Sprintf("for_%v_%v:\n", state.ForNest, state.ForCount) +
+    ""
+    return retStr
+}
+
+func compileTokenDo(state CompileState) string {
+    retStr :=
+    "; -- Do --\n"                               +
+    "pop rax\n"                                  + 
+    "cmp rax, 0\n"                               + 
+    fmt.Sprintf("je forend_%v_%v\n", state.ForNest-1, state.ForCount) +
+    ""
+    return retStr
+}
+func compileTokenIf(state CompileState) string {
+    retStr :=
+    "; -- If --\n"                          +
+    "pop rax\n"                             +
+    "cmp rax, 0\n"                          +
+    fmt.Sprintf("je ifjmp_%v_%v_%v\n", state.BranchCount, state.IfNest, state.IfCount)   +
+    ""
+    return retStr
+}
+
+func compileTokenElse(state CompileState) string {
+    retStr :=
+    "; -- Else --\n"                               +
+    fmt.Sprintf("jmp ifend_%v_%v\n", state.IfNest, state.IfCount)   +
+    fmt.Sprintf("ifjmp_%v_%v_%v:\n", state.BranchCount, state.IfNest-1, state.IfCount)   +
+    ""
+    return retStr
+}
+
+func compileTokenEnd(state CompileState, blockStack []TokenType) string {
+    blockType := blockStack[len(blockStack)-1]
+    blockStack = blockStack[:len(blockStack)-1]
+    var retStr string
+
+    if blockType == TokenIf {
+        retStr = 
+        "; -- IfEnd --\n"    +
+        fmt.Sprintf("ifend_%v_%v:\n", state.IfNest, state.IfCount)   +
+        fmt.Sprintf("ifjmp_%v_%v_%v:\n", state.BranchCount, state.IfNest-1, state.IfCount)   +
+        ""
+        state.IfNest--
+        if state.IfNest == 0 {
+            state.IfCount++
+        }
+        state.BranchCount = 0
+    } else if blockType == TokenFor {
+        state.ForNest--
+        retStr = 
+        "; -- ForEnd --\n"    +
+        fmt.Sprintf("jmp for_%v_%v\n", state.ForNest, state.ForCount)   +
+        fmt.Sprintf("forend_%v_%v:\n", state.ForNest, state.ForCount)   +
+        ""
+        if state.ForNest == 0 {
+            state.ForCount++
+        }
+    } else if blockType == TokenMacro {
+        retStr = "; -- MacroEnd --\n"
+    } else {
+        assert(false, "unreachable")
+    }
+    return retStr
+}
+func compileTokenSyscall1() string {
+    retStr :=
+    "; -- Syscall1 --\n"                               +
+    "pop rax\n"                             +
+    "pop rdi\n"                             +
+    "syscall\n"                             +
+    ""
+    return retStr
+}
+func compileTokenSyscall3() string {
+    retStr :=
+    "; -- Syscall3 --\n"                               +
+    "pop rax\n"                             +
+    "pop rdi\n"                             +
+    "pop rdx\n"                             +
+    "syscall\n"                             +
+    ""
+    return retStr
+}
+
 func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *CompileState) {
     var blockStack []TokenType
 
@@ -301,10 +577,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
         switch token.Type {
         case TokenInt:
 
-            writeStr := 
-            "; -- Int Push --\n"                            +
-            fmt.Sprintf("mov rax, %v\n", token.Operand)     +
-            "push rax\n"
+            writeStr := compileTokenInt(token)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -312,12 +585,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
             }
         case TokenPlus:
             
-            writeStr := 
-                "; -- Plus --\n"    +
-                "pop rax\n"         +
-                "pop rbx\n"         +
-                "add rax, rbx\n"    +
-                "push rax\n"
+            writeStr := compileTokenPlus()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -325,12 +593,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
             }
         case TokenSub:
 
-            writeStr := 
-                "; -- Sub --\n"     +
-                "pop rax\n"         +
-                "pop rbx\n"         +
-                "sub rbx, rax\n"    +
-                "push rbx\n"
+            writeStr := compileTokenSub()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -339,12 +602,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
 
         case TokenMult:
 
-            writeStr := 
-                "; -- Mul --\n"     +
-                "pop rax\n"         +
-                "pop rbx\n"         +
-                "mul rbx\n"         +
-                "push rax\n"
+            writeStr := compileTokenMul()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -352,15 +610,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
             }
         case TokenDivMod:
 
-            writeStr := 
-                "; -- DivMod --\n"      +
-                "xor rdx, rdx\n"        +
-                "pop rax\n"             +
-                "pop rbx\n"             +
-                "div rbx\n"             +
-                "push rdx\n"            +
-                "push rax\n"            +
-                ""
+            writeStr := compileTokenDivMod()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -369,42 +619,28 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
 
         case TokenPrint:
             
-            writeStr := 
-            "; -- Print --\n" +
-            "pop rdi\n"       +
-            "call print\n"
+            writeStr := compileTokenPrint()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenSwap:
-            writeStr := 
-            "; -- Swap --\n"    +
-            "pop rax\n"         +
-            "pop rbx\n"         +
-            "push rax\n"        +
-            "push rbx\n"
+            writeStr := compileTokenSwap()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenDup:
-            writeStr := 
-            "; -- Dup --\n"    +
-            "pop rax\n"        +
-            "push rax\n"        +
-            "push rax\n"
+            writeStr := compileTokenDup()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenDrop:
-            writeStr := 
-            "; -- Drop --\n"    +
-            "pop rax\n"
+            writeStr := compileTokenDrop()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -412,18 +648,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
             }
         case TokenGt:
             state.CmpCount++
-            writeStr := 
-            "; -- Gt --\n"      +
-            "pop rbx\n"         +
-            "pop rax\n"         +
-            "cmp rax, rbx\n"    +
-            fmt.Sprintf("jg gt1_%v\n", state.CmpCount)   +
-            "push 0\n"          +
-            fmt.Sprintf("jmp gt2_%v\n", state.CmpCount)   +
-            fmt.Sprintf("gt1_%v:\n", state.CmpCount)   +
-            "push 1\n"          +
-            fmt.Sprintf("gt2_%v:\n", state.CmpCount)   +
-            ""
+            writeStr := compileTokenGt(*state)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -431,18 +656,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
             }
         case TokenGe:
             state.CmpCount++
-            writeStr := 
-            "; -- Ge --\n"      +
-            "pop rbx\n"         +
-            "pop rax\n"         +
-            "cmp rax, rbx\n"    +
-            fmt.Sprintf("jge ge1_%v\n", state.CmpCount)   +
-            "push 0\n"          +
-            fmt.Sprintf("jmp ge2_%v\n", state.CmpCount)   +
-            fmt.Sprintf("ge1_%v:\n", state.CmpCount)   +
-            "push 1\n"          +
-            fmt.Sprintf("ge2_%v:\n", state.CmpCount)   +
-            ""
+            writeStr := compileTokenGe(*state)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -450,18 +664,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
             }
         case TokenLt:
             state.CmpCount++
-            writeStr := 
-            "; -- Lt --\n"      +
-            "pop rbx\n"         +
-            "pop rax\n"         +
-            "cmp rax, rbx\n"    +
-            fmt.Sprintf("jl lt1_%v\n", state.CmpCount)   +
-            "push 0\n"          +
-            fmt.Sprintf("jmp lt2_%v\n", state.CmpCount)   +
-            fmt.Sprintf("lt1_%v:\n", state.CmpCount)   +
-            "push 1\n"          +
-            fmt.Sprintf("lt2_%v:\n", state.CmpCount)   +
-            ""
+            writeStr := compileTokenLt(*state)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -469,18 +672,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
             }
         case TokenLe:
             state.CmpCount++
-            writeStr := 
-            "; -- Le --\n"      +
-            "pop rbx\n"         +
-            "pop rax\n"         +
-            "cmp rax, rbx\n"    +
-            fmt.Sprintf("jle le1_%v\n", state.CmpCount)   +
-            "push 0\n"          +
-            fmt.Sprintf("jmp le2_%v\n", state.CmpCount)   +
-            fmt.Sprintf("le1_%v:\n", state.CmpCount)   +
-            "push 1\n"          +
-            fmt.Sprintf("le2_%v:\n", state.CmpCount)   +
-            ""
+            writeStr := compileTokenLe(*state)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -488,28 +680,15 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
             }
         case TokenEq:
             state.CmpCount++
-            writeStr := 
-            "; -- Eq --\n"      +
-            "pop rbx\n"         +
-            "pop rax\n"         +
-            "cmp rax, rbx\n"    +
-            fmt.Sprintf("je eq1_%v\n", state.CmpCount)   +
-            "push 0\n"          +
-            fmt.Sprintf("jmp eq2_%v\n", state.CmpCount)  +
-            fmt.Sprintf("eq1_%v:\n", state.CmpCount)     +
-            "push 1\n"          +
-            fmt.Sprintf("eq2_%v:\n", state.CmpCount)     +
-            ""
+            writeStr := compileTokenEq(*state)
+
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenFor:
             blockStack = append(blockStack, token.Type)
-            writeStr := 
-            "; -- For --\n"                         +
-            fmt.Sprintf("for_%v_%v:\n", state.ForNest, state.ForCount) +
-            ""
+            writeStr := compileTokenFor(*state)
             state.ForNest++
 
             _, err := f.Write([]byte(writeStr))
@@ -517,12 +696,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
                 log.Fatalln(err)
             }
         case TokenDo:
-            writeStr := 
-            "; -- Do --\n"                               +
-            "pop rax\n"                                  + 
-            "cmp rax, 0\n"                               + 
-            fmt.Sprintf("je forend_%v_%v\n", state.ForNest-1, state.ForCount) +
-            ""
+            writeStr := compileTokenDo(*state)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -530,12 +704,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
             }
         case TokenIf:
             blockStack = append(blockStack, token.Type)
-            writeStr := 
-            "; -- If --\n"                          +
-            "pop rax\n"                             +
-            "cmp rax, 0\n"                          +
-            fmt.Sprintf("je ifjmp_%v_%v_%v\n", state.BranchCount, state.IfNest, state.IfCount)   +
-            ""
+            writeStr := compileTokenIf(*state)
             state.IfNest++
 
             _, err := f.Write([]byte(writeStr))
@@ -543,11 +712,7 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
                 log.Fatalln(err)
             }
         case TokenElse:
-            writeStr := 
-            "; -- Else --\n"                               +
-            fmt.Sprintf("jmp ifend_%v_%v\n", state.IfNest, state.IfCount)   +
-            fmt.Sprintf("ifjmp_%v_%v_%v:\n", state.BranchCount, state.IfNest-1, state.IfCount)   +
-            ""
+            writeStr := compileTokenElse(*state)
             state.BranchCount++
 
             _, err := f.Write([]byte(writeStr))
@@ -555,59 +720,19 @@ func CompileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
                 log.Fatalln(err)
             }
         case TokenEnd:
-            blockType := blockStack[len(blockStack)-1]
-            blockStack = blockStack[:len(blockStack)-1]
-            var writeStr string
-
-            if blockType == TokenIf {
-                writeStr = 
-                "; -- IfEnd --\n"    +
-                fmt.Sprintf("ifend_%v_%v:\n", state.IfNest, state.IfCount)   +
-                fmt.Sprintf("ifjmp_%v_%v_%v:\n", state.BranchCount, state.IfNest-1, state.IfCount)   +
-                ""
-                state.IfNest--
-                if state.IfNest == 0 {
-                    state.IfCount++
-                }
-                state.BranchCount = 0
-            } else if blockType == TokenFor {
-                state.ForNest--
-                writeStr = 
-                "; -- ForEnd --\n"    +
-                fmt.Sprintf("jmp for_%v_%v\n", state.ForNest, state.ForCount)   +
-                fmt.Sprintf("forend_%v_%v:\n", state.ForNest, state.ForCount)   +
-                ""
-                if state.ForNest == 0 {
-                    state.ForCount++
-                }
-            } else if blockType == TokenMacro {
-                writeStr = "; -- MacroEnd --\n"
-            } else {
-                assert(false, "unreachable")
-            }
+            writeStr := compileTokenEnd(*state, blockStack)
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenSyscall1:
-            writeStr := 
-            "; -- Syscall1 --\n"                               +
-            "pop rax\n"                             +
-            "pop rdi\n"                             +
-            "syscall\n"                             +
-            ""
+            writeStr := compileTokenSyscall1()
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenSyscall3:
-            writeStr := 
-            "; -- Syscall3 --\n"                               +
-            "pop rax\n"                             +
-            "pop rdi\n"                             +
-            "pop rdx\n"                             +
-            "syscall\n"                             +
-            ""
+            writeStr := compileTokenSyscall3()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -707,10 +832,7 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
         switch token.Type {
         case TokenInt:
 
-            writeStr := 
-            "; -- Int Push --\n"                            +
-            fmt.Sprintf("mov rax, %v\n", token.Operand)     +
-            "push rax\n"
+            writeStr := compileTokenInt(token)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -718,12 +840,7 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
             }
         case TokenPlus:
             
-            writeStr := 
-                "; -- Plus --\n"    +
-                "pop rax\n"         +
-                "pop rbx\n"         +
-                "add rax, rbx\n"    +
-                "push rax\n"
+            writeStr := compileTokenPlus()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -731,12 +848,7 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
             }
         case TokenSub:
 
-            writeStr := 
-                "; -- Sub --\n"     +
-                "pop rax\n"         +
-                "pop rbx\n"         +
-                "sub rbx, rax\n"    +
-                "push rbx\n"
+            writeStr := compileTokenSub()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -745,28 +857,14 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
 
         case TokenMult:
 
-            writeStr := 
-                "; -- Mul --\n"     +
-                "pop rax\n"         +
-                "pop rbx\n"         +
-                "mul rbx\n"         +
-                "push rax\n"
+            writeStr := compileTokenMul()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenDivMod:
-
-            writeStr := 
-                "; -- DivMod --\n"      +
-                "xor rdx, rdx\n"        +
-                "pop rax\n"             +
-                "pop rbx\n"             +
-                "div rbx\n"             +
-                "push rdx\n"            +
-                "push rax\n"            +
-                ""
+            writeStr := compileTokenDivMod()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -775,42 +873,28 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
 
         case TokenPrint:
             
-            writeStr := 
-            "; -- Print --\n" +
-            "pop rdi\n"       +
-            "call print\n"
+            writeStr := compileTokenPrint()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenSwap:
-            writeStr := 
-            "; -- Swap --\n"    +
-            "pop rax\n"         +
-            "pop rbx\n"         +
-            "push rax\n"        +
-            "push rbx\n"
+            writeStr := compileTokenSwap()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenDup:
-            writeStr := 
-            "; -- Dup --\n"    +
-            "pop rax\n"        +
-            "push rax\n"        +
-            "push rax\n"
+            writeStr := compileTokenDup()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenDrop:
-            writeStr := 
-            "; -- Drop --\n"    +
-            "pop rax\n"
+            writeStr := compileTokenDrop()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -818,18 +902,7 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
             }
         case TokenGt:
             state.CmpCount++
-            writeStr := 
-            "; -- Gt --\n"      +
-            "pop rbx\n"         +
-            "pop rax\n"         +
-            "cmp rax, rbx\n"    +
-            fmt.Sprintf("jg gt1_%v\n", state.CmpCount)   +
-            "push 0\n"          +
-            fmt.Sprintf("jmp gt2_%v\n", state.CmpCount)   +
-            fmt.Sprintf("gt1_%v:\n", state.CmpCount)   +
-            "push 1\n"          +
-            fmt.Sprintf("gt2_%v:\n", state.CmpCount)   +
-            ""
+            writeStr := compileTokenGt(state)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -837,18 +910,7 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
             }
         case TokenGe:
             state.CmpCount++
-            writeStr := 
-            "; -- Ge --\n"      +
-            "pop rbx\n"         +
-            "pop rax\n"         +
-            "cmp rax, rbx\n"    +
-            fmt.Sprintf("jge ge1_%v\n", state.CmpCount)   +
-            "push 0\n"          +
-            fmt.Sprintf("jmp ge2_%v\n", state.CmpCount)   +
-            fmt.Sprintf("ge1_%v:\n", state.CmpCount)   +
-            "push 1\n"          +
-            fmt.Sprintf("ge2_%v:\n", state.CmpCount)   +
-            ""
+            writeStr := compileTokenGe(state)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -856,18 +918,7 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
             }
         case TokenLt:
             state.CmpCount++
-            writeStr := 
-            "; -- Lt --\n"      +
-            "pop rbx\n"         +
-            "pop rax\n"         +
-            "cmp rax, rbx\n"    +
-            fmt.Sprintf("jl lt1_%v\n", state.CmpCount)   +
-            "push 0\n"          +
-            fmt.Sprintf("jmp lt2_%v\n", state.CmpCount)   +
-            fmt.Sprintf("lt1_%v:\n", state.CmpCount)   +
-            "push 1\n"          +
-            fmt.Sprintf("lt2_%v:\n", state.CmpCount)   +
-            ""
+            writeStr := compileTokenLt(state)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -875,18 +926,7 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
             }
         case TokenLe:
             state.CmpCount++
-            writeStr := 
-            "; -- Le --\n"      +
-            "pop rbx\n"         +
-            "pop rax\n"         +
-            "cmp rax, rbx\n"    +
-            fmt.Sprintf("jle le1_%v\n", state.CmpCount)   +
-            "push 0\n"          +
-            fmt.Sprintf("jmp le2_%v\n", state.CmpCount)   +
-            fmt.Sprintf("le1_%v:\n", state.CmpCount)   +
-            "push 1\n"          +
-            fmt.Sprintf("le2_%v:\n", state.CmpCount)   +
-            ""
+            writeStr := compileTokenLe(state)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -894,28 +934,14 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
             }
         case TokenEq:
             state.CmpCount++
-            writeStr := 
-            "; -- Eq --\n"      +
-            "pop rbx\n"         +
-            "pop rax\n"         +
-            "cmp rax, rbx\n"    +
-            fmt.Sprintf("je eq1_%v\n", state.CmpCount)   +
-            "push 0\n"          +
-            fmt.Sprintf("jmp eq2_%v\n", state.CmpCount)  +
-            fmt.Sprintf("eq1_%v:\n", state.CmpCount)     +
-            "push 1\n"          +
-            fmt.Sprintf("eq2_%v:\n", state.CmpCount)     +
-            ""
+            writeStr := compileTokenEq(state)
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenFor:
             blockStack = append(blockStack, token.Type)
-            writeStr := 
-            "; -- For --\n"                         +
-            fmt.Sprintf("for_%v_%v:\n", state.ForNest, state.ForCount) +
-            ""
+            writeStr := compileTokenFor(state)
             state.ForNest++
 
             _, err := f.Write([]byte(writeStr))
@@ -923,12 +949,7 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
                 log.Fatalln(err)
             }
         case TokenDo:
-            writeStr := 
-            "; -- Do --\n"                               +
-            "pop rax\n"                                  + 
-            "cmp rax, 0\n"                               + 
-            fmt.Sprintf("je forend_%v_%v\n", state.ForNest-1, state.ForCount) +
-            ""
+            writeStr := compileTokenDo(state)
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -936,12 +957,7 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
             }
         case TokenIf:
             blockStack = append(blockStack, token.Type)
-            writeStr := 
-            "; -- If --\n"                          +
-            "pop rax\n"                             +
-            "cmp rax, 0\n"                          +
-            fmt.Sprintf("je ifjmp_%v_%v_%v\n", state.BranchCount, state.IfNest, state.IfCount)   +
-            ""
+            writeStr := compileTokenIf(state)
             state.IfNest++
 
             _, err := f.Write([]byte(writeStr))
@@ -949,11 +965,7 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
                 log.Fatalln(err)
             }
         case TokenElse:
-            writeStr := 
-            "; -- Else --\n"                               +
-            fmt.Sprintf("jmp ifend_%v_%v\n", state.IfNest, state.IfCount)   +
-            fmt.Sprintf("ifjmp_%v_%v_%v:\n", state.BranchCount, state.IfNest-1, state.IfCount)   +
-            ""
+            writeStr := compileTokenElse(state)
             state.BranchCount++
 
             _, err := f.Write([]byte(writeStr))
@@ -961,59 +973,21 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
                 log.Fatalln(err)
             }
         case TokenEnd:
-            blockType := blockStack[len(blockStack)-1]
-            blockStack = blockStack[:len(blockStack)-1]
-            var writeStr string
+            writeStr := compileTokenEnd(state, blockStack)
 
-            if blockType == TokenIf {
-                writeStr = 
-                "; -- IfEnd --\n"    +
-                fmt.Sprintf("ifend_%v_%v:\n", state.IfNest, state.IfCount)   +
-                fmt.Sprintf("ifjmp_%v_%v_%v:\n", state.BranchCount, state.IfNest-1, state.IfCount)   +
-                ""
-                state.IfNest--
-                if state.IfNest == 0 {
-                    state.IfCount++
-                }
-                state.BranchCount = 0
-            } else if blockType == TokenFor {
-                state.ForNest--
-                writeStr = 
-                "; -- ForEnd --\n"    +
-                fmt.Sprintf("jmp for_%v_%v\n", state.ForNest, state.ForCount)   +
-                fmt.Sprintf("forend_%v_%v:\n", state.ForNest, state.ForCount)   +
-                ""
-                if state.ForNest == 0 {
-                    state.ForCount++
-                }
-            } else if blockType == TokenMacro {
-                writeStr = "; -- MacroEnd --\n"
-            } else {
-                assert(false, "unreachable")
-            }
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenSyscall1:
-            writeStr := 
-            "; -- Syscall1 --\n"                               +
-            "pop rax\n"                             +
-            "pop rdi\n"                             +
-            "syscall\n"                             +
-            ""
+            writeStr := compileTokenSyscall1()
+
             _, err := f.Write([]byte(writeStr))
             if err != nil {
                 log.Fatalln(err)
             }
         case TokenSyscall3:
-            writeStr := 
-            "; -- Syscall3 --\n"                               +
-            "pop rax\n"                             +
-            "pop rdi\n"                             +
-            "pop rdx\n"                             +
-            "syscall\n"                             +
-            ""
+            writeStr := compileTokenSyscall3()
 
             _, err := f.Write([]byte(writeStr))
             if err != nil {
@@ -1039,6 +1013,15 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
                 tokenBuffer = append(tokenBuffer, tokens[i])
             }
             globalTable[macroToken.Content] = tokenBuffer
+        // case TokenVar:
+        //     writeStr := 
+        //     "; -- Var --\n"                               +
+        //     ""
+        //
+        //     _, err := f.Write([]byte(writeStr))
+        //     if err != nil {
+        //         log.Fatalln(err)
+        //     }
         case TokenWord:
             tokenName := strTokens[tokens[i].Operand].Content
             if rune(tokenName[0]) == rune(0) { continue }
@@ -1058,7 +1041,8 @@ func CompileProgram(strTokens []StringToken, tokens []Token) {
     "mov rdi, 0\n"              +
     "syscall\n"                 +
     "section .bss\n"            +
-    "print_buffer: resb 22\n"
+    "print_buffer: resb 22\n"   +
+    "variable_buffer: resb 1024"
 
     _, err = f.Write([]byte(footer))
     if err != nil {
