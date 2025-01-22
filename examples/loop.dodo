@@ -1,4 +1,4 @@
-0 for dup 20 < do
+1 for dup 20 < do
     dup 5 swap divmod 
     swap drop 0 = if
         7155 print

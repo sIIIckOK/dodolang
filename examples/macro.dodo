@@ -1,9 +1,10 @@
 macro count
-    0 for dup 10 < do
-        dup print 
-        1 +
+    0 for dup rot dup rot >= do
+       swap
+       dup print
+       1 +
     end
 end
 
-count
-count
+10 count
+15 count
