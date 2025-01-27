@@ -1,10 +1,5 @@
-macro count
-    0 for dup rot dup rot >= do
-       swap
-       dup print
-       1 +
-    end
+macro one
+    1 + print
 end
 
-10 count
-15 count
+one
