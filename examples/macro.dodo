@@ -1,5 +1,4 @@
-macro one
-    1 + print
-end
 
-one
+
+
+print

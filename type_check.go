@@ -32,8 +32,6 @@ func typeCheck(strTokens []StringToken, tokens []Token) (bool) {
     assert(TokenCount == 29, "Exhaustive switch case for typeCheck")
     for i := 0; i < len(tokens); i++ {
         token := tokens[i]
-        token.Loc.Col++
-        token.Loc.Line++
         loc := token.Loc
         switch token.Type {
         case TokenInt:
