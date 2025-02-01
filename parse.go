@@ -13,10 +13,15 @@ var tokenKindStr = map[string]TokenType{
 }
 
 func parseTokens(strTokens []StringToken, state *CompileState) []Token {
-	var tokens []Token
+	var mainTokenBuffer []Token
+	var macroTokenBuffer []Token
+	var currentTokenBuffer *[]Token = &mainTokenBuffer
+	macroMode := false
+	var macroEndStack int
+	var currentMacroName string
 	var t Token
 	if len(strTokens) == 0 {
-		return tokens
+		return mainTokenBuffer
 	}
 	t.Loc.FilePath = strTokens[0].Loc.FilePath
 	assert(TokenCount == 29, "Exhaustive switch case for ParseToken")
@@ -26,8 +31,31 @@ func parseTokens(strTokens []StringToken, state *CompileState) []Token {
 		if len(strTok.Content) == 0 {
 			continue
 		}
-
 		mapTok, exists := tokenStr[strTok.Content]
+		if macroMode {
+			switch mapTok {
+			case TokenFor, TokenIf:
+				macroEndStack++
+			case TokenEnd:
+				macroEndStack--
+			case TokenMacro:
+				fmt.Printf("%v:%v:%v ", strTok.Loc.FilePath, strTok.Loc.Line, strTok.Loc.Col)
+				fmt.Println("macro definition inside of a macro is not supported")
+				os.Exit(1)
+			default:
+			}
+		}
+		if exists && mapTok == TokenMacro {
+            t.Loc = strTok.Loc
+            t.Type = TokenMacro
+            *currentTokenBuffer = append(*currentTokenBuffer, t)
+			currentTokenBuffer = &macroTokenBuffer
+			macroMode = true
+			macroEndStack = 0
+			currentMacroName = strTokens[i+1].Content
+			i++
+            continue
+		}
 		if exists && mapTok == TokenVar {
 			var (
 				varKind      TokenType
@@ -116,7 +144,7 @@ func parseTokens(strTokens []StringToken, state *CompileState) []Token {
 			if num, err := strconv.ParseUint(strTok.Content, 10, 64); err == nil {
 				t.Type = TokenInt
 				t.Operand = num
-				tokens = append(tokens, t)
+				*currentTokenBuffer = append(*currentTokenBuffer, t)
 				continue
 			}
 			_, macroFound := globalMacroTable[strTok.Content]
@@ -124,19 +152,25 @@ func parseTokens(strTokens []StringToken, state *CompileState) []Token {
 			if !macroFound && !varFound {
 				fmt.Printf("%v:%v:%v ", strTok.Loc.FilePath, strTok.Loc.Line, strTok.Loc.Col)
 				fmt.Printf("Undefined Token `%v`\n", strTok.Content)
-                os.Exit(1)
+				os.Exit(1)
 			}
 			t.Type = TokenWord
 			t.Operand = uint64(i)
-			tokens = append(tokens, t)
+			*currentTokenBuffer = append(*currentTokenBuffer, t)
 		} else {
 			t.Loc = strTok.Loc
 			t.Type = mapTok
-			tokens = append(tokens, t)
+			*currentTokenBuffer = append(*currentTokenBuffer, t)
+		}
+		if mapTok == TokenEnd && macroEndStack == 0 {
+			globalMacroTable[currentMacroName] = macroTokenBuffer
+			currentTokenBuffer = &mainTokenBuffer
+			macroMode = false
+			continue
 		}
 	}
 
-	return tokens
+	return mainTokenBuffer
 }
 
 var tokenStr = map[string]TokenType{

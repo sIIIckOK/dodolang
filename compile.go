@@ -539,25 +539,6 @@ func compileProgram(strTokens []StringToken, tokens []Token, state *CompileState
 			}
 		case TokenMacro:
 			blockStack = append(blockStack, TokenMacro)
-			blockCount := 0
-			tokenBuffer := []Token{}
-			i++
-			macroToken := strTokens[tokens[i].Operand]
-			for {
-				i++
-				if tokens[i].Type == TokenFor || tokens[i].Type == TokenIf {
-					blockCount++
-				} else if tokens[i].Type == TokenEnd {
-					if blockCount == 0 {
-						break
-					}
-					blockCount--
-				} else if tokens[i].Type == TokenMacro {
-					assert(false, "macro definition inside macro definition is not allowed")
-				}
-				tokenBuffer = append(tokenBuffer, tokens[i])
-			}
-			globalMacroTable[macroToken.Content] = tokenBuffer
 		case TokenVar:
 			assert(false, "TokenVar unreachable")
 		case TokenRead:

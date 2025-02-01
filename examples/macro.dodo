@@ -1,0 +1,10 @@
+macro count
+    0 for dup rot dup rot > do
+        swap dup print
+        1 +
+    end
+end
+
+15 count
+10 count
+
