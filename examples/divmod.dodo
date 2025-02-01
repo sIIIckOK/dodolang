@@ -1,8 +1,0 @@
-macro /
-    divmod drop
-end
-
-macro %
-    divmod swap drop
-end
-

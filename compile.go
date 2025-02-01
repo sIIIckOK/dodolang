@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
-	"strings"
 )
 
 func compileTokenInt(token Token) string {
@@ -282,7 +280,7 @@ func compileTokenVar(offset uintptr) string {
 func compileTokenRead() string {
 	retStr := "; -- Var Read --\n" +
 		"pop rbx\n" +
-		"mov al, byte [vars_buffer+rbx]\n" +
+		"mov rax, qword [rbx]\n" +
 		"push rax\n" +
 		""
 	return retStr
@@ -290,19 +288,13 @@ func compileTokenRead() string {
 
 func compileTokenWrite() string {
 	retStr := "; -- Var Write --\n" +
-		"pop rbx\n" +
 		"pop rax\n" +
-		"mov byte [vars_buffer+rbx], al\n"
+		"pop rbx\n" +
+		"mov qword [rbx], rax\n"
 	return retStr
 }
 
-func compileProgram(strTokens []StringToken, tokens []Token) {
-	if len(tokens) == 0 {
-		log.Fatalln("Empty file not allowed")
-	}
-
-	srcPath := tokens[0].Loc.FilePath
-	outPath := strings.TrimSuffix(srcPath, filepath.Ext(srcPath)) + ".asm"
+func compileProgram(strTokens []StringToken, tokens []Token, state *CompileState, outPath string) {
 	f, err := os.Create(outPath)
 	defer f.Close()
 	if err != nil {
@@ -364,6 +356,7 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
     ret
 
     global _start
+    global vars_buffer
     _start: 
     `
 	_, err = f.Write([]byte(header))
@@ -371,7 +364,6 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
 		log.Fatalln(err)
 	}
 	blockStack := make([]TokenType, 0, 0)
-	state := CompileState{}
 
 	assert(TokenCount == 29, "Exhaustive switch case for CompileProgram")
 	for i := 0; i < len(tokens); i++ {
@@ -454,7 +446,7 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
 			}
 		case TokenGt:
 			state.CmpCount++
-			writeStr := compileTokenGt(&state)
+			writeStr := compileTokenGt(state)
 
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
@@ -462,7 +454,7 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
 			}
 		case TokenGe:
 			state.CmpCount++
-			writeStr := compileTokenGe(&state)
+			writeStr := compileTokenGe(state)
 
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
@@ -470,7 +462,7 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
 			}
 		case TokenLt:
 			state.CmpCount++
-			writeStr := compileTokenLt(&state)
+			writeStr := compileTokenLt(state)
 
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
@@ -478,7 +470,7 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
 			}
 		case TokenLe:
 			state.CmpCount++
-			writeStr := compileTokenLe(&state)
+			writeStr := compileTokenLe(state)
 
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
@@ -486,21 +478,21 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
 			}
 		case TokenEq:
 			state.CmpCount++
-			writeStr := compileTokenEq(&state)
+			writeStr := compileTokenEq(state)
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
 				log.Fatalln(err)
 			}
 		case TokenFor:
 			blockStack = append(blockStack, token.Type)
-			writeStr := compileTokenFor(&state)
+			writeStr := compileTokenFor(state)
 
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
 				log.Fatalln(err)
 			}
 		case TokenDo:
-			writeStr := compileTokenDo(&state)
+			writeStr := compileTokenDo(state)
 
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
@@ -508,14 +500,14 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
 			}
 		case TokenIf:
 			blockStack = append(blockStack, token.Type)
-			writeStr := compileTokenIf(&state)
+			writeStr := compileTokenIf(state)
 
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
 				log.Fatalln(err)
 			}
 		case TokenElse:
-			writeStr := compileTokenElse(&state)
+			writeStr := compileTokenElse(state)
 			state.BranchCount++
 
 			_, err := f.Write([]byte(writeStr))
@@ -525,7 +517,7 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
 		case TokenEnd:
 			blockType := blockStack[len(blockStack)-1]
 			blockStack = blockStack[:len(blockStack)-1]
-			writeStr := compileTokenEnd(&state, blockType)
+			writeStr := compileTokenEnd(state, blockType)
 
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
@@ -567,28 +559,7 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
 			}
 			globalMacroTable[macroToken.Content] = tokenBuffer
 		case TokenVar:
-			i++
-			varNameToken := tokens[i]
-			i++
-			varSizeToken := tokens[i]
-			if varSizeToken.Type != TokenInt {
-				fmt.Printf(
-					"%v:%v:%v Expected int found `%v`",
-					varSizeToken.Loc.FilePath,
-					varSizeToken.Loc.Line,
-					varSizeToken.Loc.Col,
-					varSizeToken.Type,
-				)
-			}
-			state.varOffset += varSizeToken.Operand
-			varName := strTokens[varNameToken.Operand].Content
-			globalVarsTable[varName] = uintptr(state.varOffset)
-
-			writeStr := fmt.Sprintf(";; -- Vardef-%s --\n", varName)
-			_, err := f.Write([]byte(writeStr))
-			if err != nil {
-				log.Fatalln(err)
-			}
+			assert(false, "TokenVar unreachable")
 		case TokenRead:
 			writeStr := compileTokenRead()
 			_, err := f.Write([]byte(writeStr))
@@ -602,17 +573,28 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
 				log.Fatalln(err)
 			}
 		case TokenWord:
-			tokenName := strTokens[tokens[i].Operand].Content
-			if toks, found := globalMacroTable[tokenName]; found {
-				compileMacro(f, strTokens, toks, &state)
-			} else if vars, found := globalVarsTable[tokenName]; found {
-				writeStr := compileTokenVar(vars)
+			curTok := strTokens[tokens[i].Operand]
+			tokenName := curTok.Content
+			macroToks, macroFound := globalMacroTable[tokenName]
+			varTok, varFound := globalVarsTable[tokenName]
+			if macroFound && varFound {
+				fmt.Printf("%v:%v:%v ", curTok.Loc.FilePath, curTok.Loc.Line, curTok.Loc.Col)
+				fmt.Printf(
+					"[COMPILER_ISSUE] Provided TokenWord `%v` is both macro and var, this error should have been caught in the parser\n",
+					tokenName,
+				)
+			}
+			if macroFound {
+				compileMacro(f, strTokens, macroToks, state)
+			} else if varFound {
+				writeStr := compileTokenVar(uintptr(varTok.Operand))
 				_, err := f.Write([]byte(writeStr))
 				if err != nil {
 					log.Fatalln(err)
 				}
 			} else {
-				log.Fatalf("undefined `%v`\n", tokenName)
+				fmt.Printf("%v:%v:%v ", curTok.Loc.FilePath, curTok.Loc.Line, curTok.Loc.Col)
+				fmt.Printf("Undefined TokenWord %v\n", tokenName)
 			}
 		default:
 			assert(false, "CompileProgram unreachable")
@@ -625,7 +607,7 @@ func compileProgram(strTokens []StringToken, tokens []Token) {
 		"syscall\n" +
 		"section .bss\n" +
 		"print_buffer: resb 22\n" +
-		"vars_buffer: resb 1024"
+		fmt.Sprintf("vars_buffer: resb %v\n", state.varBufSize)
 
 	_, err = f.Write([]byte(footer))
 	if err != nil {

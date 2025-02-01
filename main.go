@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	globalVarsTable  = make(map[string]uintptr, 100)
+	globalVarsTable  = make(map[string]Token, 100)
 	globalMacroTable = make(map[string][]Token, 100)
 )
 
@@ -58,15 +58,14 @@ const (
 	TokenVar
 	TokenRead
 	TokenWrite
-
 	TokenCount
 )
 
 type Token struct {
 	Type    TokenType
+	Kind    TokenType
 	Loc     Location
 	Operand uint64
-	NestLvl uint64
 }
 
 func main() {
@@ -98,15 +97,22 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-
+	state := CompileState{}
 	content := string(contentBytes) + string(0)
 	strTokens := lexFile(content, filePath)
-	tokens := ParseTokens(strTokens)
-	typeCheck(strTokens, tokens)
+	tokens := parseTokens(strTokens, &state)
+	if !typeCheck(strTokens, tokens) {
+		os.Exit(1)
+	}
 
 	outPath := strings.TrimSuffix(filePath, filepath.Ext(filePath))
 	if subCom == "build" {
-		compileProgram(strTokens, tokens)
+		abs, err := filepath.Abs(outPath)
+		abs += ".asm"
+		if err != nil {
+			log.Fatalln("ERROR:", err)
+		}
+		compileProgram(strTokens, tokens, &state, abs)
 		cmd := []string{"nasm", "-g", "-felf64", outPath + ".asm"}
 		if out, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput(); err != nil {
 			log.Fatalln("ERROR:", err, cmd, string(out))
@@ -128,6 +134,7 @@ type CompileState struct {
 	ForNest     uint64
 	IfNest      uint64
 	BranchCount uint64
+	varBufSize  uint64
 	varOffset   uint64
 }
 

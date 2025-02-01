@@ -25,7 +25,9 @@ func lexFile(content string, filePath string) []StringToken {
 			t.Content = content[start:i]
 			t.Loc.Col = uint(start - bol + 1)
 			t.Loc.Line = uint(lineNo + 1)
-			tokens = append(tokens, t)
+			if i-start > 0 {
+				tokens = append(tokens, t)
+			}
 			for unicode.IsSpace(rune(content[i])) && i < contentLen {
 				if content[i] == '\n' {
 					lineNo++
@@ -34,6 +36,19 @@ func lexFile(content string, filePath string) []StringToken {
 				i++
 			}
 			start = i
+		}
+		if i < contentLen+1 {
+			if content[i] == '/' && content[i+1] == '/' {
+				for i < contentLen {
+					i++
+					if content[i] == '\n' {
+						break
+					}
+				}
+				lineNo++
+				start = i + 1
+				bol = i + 1
+			}
 		}
 	}
 	return tokens

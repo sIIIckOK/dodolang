@@ -1,0 +1,50 @@
+// comments are c styled btw
+
+// `print` is an instrinsic that prints 64 bit numbers
+// all variables in this language are 64 bits for now
+14 print
+
+// loops
+0 for dup 10 < do
+    dup print
+    1 +
+end
+
+// if else
+// booleans are 1 (true) and 0 (false) for now, later they will be type checked and use `true` and `false`
+1 if 
+    69 print
+else
+    420 print
+end
+
+0 if 
+    69 print
+else
+    420 print
+end
+
+// variable definitions look like this
+var x int end // var <var-name> <var-type> end
+
+// when you write the variable on the stack, you actually writing the ptr to that variable on the stack
+// which means you have to do special operation `!` (write) and `@` (read)
+x 2 !     // writes 2 in the var `x`
+x @ print // `@` takes the ptr and deferences it as a 64 bit int, as all types are 64 bit for now
+// ^ this should print 2 as we wrote 2 inside the variable `x`
+
+// putting it all together we can do this
+
+// declare the variables
+var a int end
+var b int end
+
+a 2 ! // write 2 inside the variable `a`
+
+a @ 0 > if // take a then deference is which will give us 2, then see if a > 0
+    b 69 ! // if a > 2 then write 69 into `b`
+else
+    b 420 ! // else write 420 into `b`
+end
+
+b @ print // print the value inside of b

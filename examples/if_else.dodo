@@ -1,16 +1,8 @@
-1 0 = if
-    10 print
-else 
-    20 print
-end
+// 1 = true
+// 0 = false
 
-69 420 < if
-    2 1 - 1 = if
-        33 print
-    else
-        77 print
-    end
-    55 print
+0 if
+    69 print
 else
-    44 print
+    420 print
 end

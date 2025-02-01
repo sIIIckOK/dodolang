@@ -182,24 +182,21 @@ func compileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
 				log.Fatalln(err)
 			}
 		case TokenVar:
-			i++
-			varNameToken := tokens[i]
-			i++
-			varSizeToken := tokens[i]
-			if varSizeToken.Type != TokenInt {
-				fmt.Printf(
-					"%v:%v:%v Expected int found `%v`",
-					varSizeToken.Loc.FilePath,
-					varSizeToken.Loc.Line,
-					varSizeToken.Loc.Col,
-					varSizeToken.Type,
+			strTok := strTokens[token.Operand]
+			varName := strTok.Content
+			var varToken Token
+			var found bool
+			if varToken, found = globalVarsTable[varName]; !found {
+				fmt.Printf("%v:%v:%v ", strTok.Loc.FilePath, strTok.Loc.Line, strTok.Loc.Col)
+				fmt.Println("expected variable definition")
+				fmt.Println(
+					"variable definition looks like this: \n",
+					"  `var <var-name> <var-type> end`\n",
+					"eg: \n",
+					"  `var x int end`",
 				)
 			}
-			state.varOffset += varSizeToken.Operand
-			varName := strTokens[varNameToken.Operand].Content
-			globalVarsTable[varName] = uintptr(state.varOffset)
-
-			writeStr := fmt.Sprintf(";; -- Vardef-%s --\n", varName)
+			writeStr := compileTokenVar(uintptr(varToken.Operand))
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
 				log.Fatalln(err)
@@ -216,6 +213,27 @@ func compileMacro(f *os.File, strTokens []StringToken, tokens []Token, state *Co
 			if err != nil {
 				log.Fatalln(err)
 			}
+        case TokenWord:
+            tokenName := strTokens[tokens[i].Operand].Content
+            if _, found := globalMacroTable[tokenName]; found {
+                fmt.Println("ERROR:", "macro definition inside a macro is not supported")
+            } else if _, found := globalVarsTable[tokenName]; found {
+                strTok := strTokens[token.Operand]
+                varName := strTok.Content
+                var varToken Token
+                var found bool
+                if varToken, found = globalVarsTable[varName]; !found {
+                    fmt.Printf("%v:%v:%v ", strTok.Loc.FilePath, strTok.Loc.Line, strTok.Loc.Col)
+                    fmt.Printf("Undefined TokenWord %v\n", varName)
+                }
+                writeStr := compileTokenVar(uintptr(varToken.Operand))
+                _, err := f.Write([]byte(writeStr))
+                if err != nil {
+                    log.Fatalln(err)
+                }
+            } else {
+                log.Fatalf("undefined `%v`\n", tokenName)
+            }
 		case TokenMacro:
 			fmt.Println("ERROR:", "macro definition inside a macro is not supported")
 			os.Exit(1)

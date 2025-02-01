@@ -1,105 +1,168 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"strconv"
 )
 
-func ParseTokens(strTokens []StringToken) []Token {
+var tokenKindStr = map[string]TokenType{
+	"int":  TokenInt,
+	"bool": TokenBool,
+	"ptr":  TokenPtr,
+}
+
+func parseTokens(strTokens []StringToken, state *CompileState) []Token {
 	var tokens []Token
 	var t Token
+	if len(strTokens) == 0 {
+		return tokens
+	}
+	t.Loc.FilePath = strTokens[0].Loc.FilePath
 	assert(TokenCount == 29, "Exhaustive switch case for ParseToken")
-	for i, tok := range strTokens {
-		if len(tok.Content) == 0 {
+
+	for i := 0; i < len(strTokens); i++ {
+		strTok := strTokens[i]
+		if len(strTok.Content) == 0 {
 			continue
 		}
-		t.Loc = tok.Loc
-		switch tok.Content {
-		case "+":
-			t.Type = TokenPlus
-			tokens = append(tokens, t)
-		case "-":
-			t.Type = TokenSub
-			tokens = append(tokens, t)
-		case "*":
-			t.Type = TokenMult
-			tokens = append(tokens, t)
-		case "divmod":
-			t.Type = TokenDivMod
-			tokens = append(tokens, t)
-		case "print":
-			t.Type = TokenPrint
-			tokens = append(tokens, t)
-		case "swap":
-			t.Type = TokenSwap
-			tokens = append(tokens, t)
-		case "dup":
-			t.Type = TokenDup
-			tokens = append(tokens, t)
-		case "drop":
-			t.Type = TokenDrop
-			tokens = append(tokens, t)
-		case ">":
-			t.Type = TokenGt
-			tokens = append(tokens, t)
-		case ">=":
-			t.Type = TokenGe
-			tokens = append(tokens, t)
-		case "<":
-			t.Type = TokenLt
-			tokens = append(tokens, t)
-		case "<=":
-			t.Type = TokenLe
-			tokens = append(tokens, t)
-		case "=":
-			t.Type = TokenEq
-			tokens = append(tokens, t)
-		case "for":
-			t.Type = TokenFor
-			tokens = append(tokens, t)
-		case "do":
-			t.Type = TokenDo
-			tokens = append(tokens, t)
-		case "if":
-			t.Type = TokenIf
-			tokens = append(tokens, t)
-		case "else":
-			t.Type = TokenElse
-			tokens = append(tokens, t)
-		case "end":
-			t.Type = TokenEnd
-			tokens = append(tokens, t)
-		case "macro":
-			t.Type = TokenMacro
-			tokens = append(tokens, t)
-		case "syscall1":
-			t.Type = TokenSyscall1
-			tokens = append(tokens, t)
-		case "syscall3":
-			t.Type = TokenSyscall3
-			tokens = append(tokens, t)
-		case "rot":
-			t.Type = TokenRot
-			tokens = append(tokens, t)
-		case "var":
-			t.Type = TokenVar
-			tokens = append(tokens, t)
-		case "@":
-			t.Type = TokenRead
-			tokens = append(tokens, t)
-		case "!":
-			t.Type = TokenWrite
-			tokens = append(tokens, t)
-		default:
-			if num, err := strconv.ParseUint(tok.Content, 10, 64); err == nil {
+
+		mapTok, exists := tokenStr[strTok.Content]
+		if exists && mapTok == TokenVar {
+			var (
+				varKind      TokenType
+				varName      string
+				varNameIndex uint64
+			)
+			if i+3 >= len(strTokens) {
+				fmt.Printf("%v:%v:%v ", strTok.Loc.FilePath, strTok.Loc.Line, strTok.Loc.Col)
+				fmt.Println("expected variable definition")
+				fmt.Println(
+					"variable definition looks like this: \n",
+					"  `var <var-name> <var-type> end`\n",
+					"eg: \n",
+					"  `var x int end`",
+				)
+				os.Exit(1)
+			}
+			{
+				i++
+				strTok = strTokens[i]
+				varNameIndex = uint64(i)
+				varName = strTokens[varNameIndex].Content
+				if tmpT, e := tokenStr[strTok.Content]; e {
+					fmt.Printf("%v:%v:%v ", strTok.Loc.FilePath, strTok.Loc.Line, strTok.Loc.Col)
+					fmt.Printf(
+						"expected TokenWord found keyword %v\n keyword not allowed as variable names\n",
+						intrinsicStr[tmpT],
+					)
+					fmt.Println(
+						"variable definition looks like this: \n",
+						"  `var <var-name> <var-type> end`\n",
+						"eg: \n",
+						"  `var x int end`",
+					)
+					os.Exit(1)
+				}
+			}
+			{
+				i++
+				strTok = strTokens[i]
+				var e bool
+				varKind, e = tokenKindStr[strTok.Content]
+				if !e {
+					fmt.Printf("%v:%v:%v ", strTok.Loc.FilePath, strTok.Loc.Line, strTok.Loc.Col)
+					fmt.Printf(
+						"expected type found %v\n",
+						strTok.Content)
+					fmt.Println(
+						"variable definition looks like this: \n",
+						"  `var <var-name> <var-type> end`\n",
+						"eg: \n",
+						"  `var x int end`",
+					)
+					os.Exit(1)
+				}
+			}
+			{
+				i++
+				strTok = strTokens[i]
+				if _, e := tokenStr[strTok.Content]; !e {
+					fmt.Printf("%v:%v:%v ", strTok.Loc.FilePath, strTok.Loc.Line, strTok.Loc.Col)
+					fmt.Printf(
+						"expected TokenEnd found %v\n",
+						strTok.Content)
+					fmt.Println(
+						"variable definition looks like this: \n",
+						"  `var <var-name> <var-type> end`\n",
+						"eg: \n",
+						"  `var x int end`",
+					)
+					os.Exit(1)
+				}
+			}
+			// TODO(@siiick): swap Token.Kind and Token.Type as `kind` implies things like `end`, `for` etc, while `type` is `int`, `bool` etc
+			t.Loc = strTok.Loc
+			t.Kind = varKind   // var type
+			t.Type = TokenWord // token type
+			t.Operand = state.varBufSize
+			globalVarsTable[varName] = t
+			state.varBufSize += 8
+			continue
+		}
+
+		if !exists {
+			t.Loc = strTok.Loc
+			if num, err := strconv.ParseUint(strTok.Content, 10, 64); err == nil {
 				t.Type = TokenInt
 				t.Operand = num
 				tokens = append(tokens, t)
 				continue
 			}
+			_, macroFound := globalMacroTable[strTok.Content]
+			_, varFound := globalVarsTable[strTok.Content]
+			if !macroFound && !varFound {
+				fmt.Printf("%v:%v:%v ", strTok.Loc.FilePath, strTok.Loc.Line, strTok.Loc.Col)
+				fmt.Printf("Undefined Token `%v`\n", strTok.Content)
+                os.Exit(1)
+			}
 			t.Type = TokenWord
 			t.Operand = uint64(i)
 			tokens = append(tokens, t)
+		} else {
+			t.Loc = strTok.Loc
+			t.Type = mapTok
+			tokens = append(tokens, t)
 		}
 	}
+
 	return tokens
+}
+
+var tokenStr = map[string]TokenType{
+	"+":        TokenPlus,
+	"-":        TokenSub,
+	"*":        TokenMult,
+	"divmod":   TokenDivMod,
+	"print":    TokenPrint,
+	"swap":     TokenSwap,
+	"dup":      TokenDup,
+	"drop":     TokenDrop,
+	">":        TokenGt,
+	">=":       TokenGe,
+	"<":        TokenLt,
+	"<=":       TokenLe,
+	"=":        TokenEq,
+	"for":      TokenFor,
+	"do":       TokenDo,
+	"if":       TokenIf,
+	"else":     TokenElse,
+	"end":      TokenEnd,
+	"macro":    TokenMacro,
+	"syscall1": TokenSyscall1,
+	"syscall3": TokenSyscall3,
+	"rot":      TokenRot,
+	"@":        TokenRead,
+	"!":        TokenWrite,
+	"var":      TokenVar,
 }
