@@ -5,19 +5,19 @@ import (
 	"os"
 )
 
-type TypeStack []TokenType
+type TypeStack []TypeInfo
 
-func (ts *TypeStack) push(t TokenType) {
+func (ts *TypeStack) push(t TypeInfo) {
 	*ts = append(*ts, t)
 }
 
-func (ts *TypeStack) pop(loc Location) TokenType {
+func (ts *TypeStack) pop(loc Location) TypeInfo {
 	if len(*ts) == 0 {
 		fmt.Printf("%v:%v:%v: Stack underflow \n",
 			loc.FilePath, loc.Line, loc.Col)
 	}
 	t := (*ts)[len(*ts)-1]
-    *ts = (*ts)[:len(*ts)-1]
+	*ts = (*ts)[:len(*ts)-1]
 	return t
 }
 
@@ -25,16 +25,21 @@ func (ts TypeStack) len() uint {
 	return uint(len(ts))
 }
 
+type TypeInfo struct {
+	Type TokenType
+	Kind TokenType
+}
+
 func typeCheck(strTokens []StringToken, tokens []Token) bool {
 	_ = strTokens
 	var stack TypeStack
-	assert(TokenCount == 29, "Exhaustive switch case for typeCheck")
+	assert(TokenCount == 30, "Exhaustive switch case for typeCheck")
 	for i := 0; i < len(tokens); i++ {
 		token := tokens[i]
 		loc := token.Loc
 		switch token.Type {
 		case TokenInt:
-			stack.push(TokenInt)
+			stack.push(TypeInfo{TokenInt, TokenInt})
 		case TokenPlus:
 			if stack.len() < 2 {
 				printCompilerErrorInstrinsic(
@@ -46,16 +51,16 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 			}
 			a := stack.pop(loc)
 			b := stack.pop(loc)
-			if b != TokenInt && a != TokenInt {
+			if b.Type != TokenInt && a.Type != TokenInt {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 2 ints found < %v %v > on the stack",
-					intrinsicStr[b],
-					intrinsicStr[a],
+					intrinsicStr[b.Type],
+					intrinsicStr[a.Type],
 				)
 				return false
 			}
-			stack.push(TokenInt)
+			stack.push(TypeInfo{TokenInt, TokenInt})
 		case TokenSub:
 			if stack.len() < 2 {
 				printCompilerErrorInstrinsic(
@@ -67,16 +72,16 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 			}
 			a := stack.pop(loc)
 			b := stack.pop(loc)
-			if b != TokenInt && a != TokenInt {
+			if b.Type != TokenInt && a.Type != TokenInt {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 2 ints found < %v %v > on the stack",
-					intrinsicStr[b],
-					intrinsicStr[a],
+					intrinsicStr[b.Type],
+					intrinsicStr[a.Type],
 				)
 				return false
 			}
-			stack.push(TokenInt)
+			stack.push(TypeInfo{TokenInt, TokenInt})
 		case TokenMult:
 			if stack.len() < 2 {
 				printCompilerErrorInstrinsic(
@@ -88,16 +93,16 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 			}
 			a := stack.pop(loc)
 			b := stack.pop(loc)
-			if b != TokenInt && a != TokenInt {
+			if b.Type != TokenInt && a.Type != TokenInt {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 2 ints found < %v %v > on the stack",
-					intrinsicStr[b],
-					intrinsicStr[a],
+					intrinsicStr[b.Type],
+					intrinsicStr[a.Type],
 				)
 				return false
 			}
-			stack.push(TokenInt)
+			stack.push(TypeInfo{TokenInt, TokenInt})
 		case TokenPrint:
 			if stack.len() < 1 {
 				printCompilerErrorInstrinsic(
@@ -108,11 +113,11 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 				return false
 			}
 			a := stack.pop(loc)
-			if a != TokenInt {
+			if !(a.Type == TokenInt || a.Type == TokenPtr || a.Type == TokenBool) {
 				printCompilerErrorInstrinsic(
 					token,
-					"takes 2 ints found < %v > on the stack",
-					intrinsicStr[a],
+					"takes 1 ints or ptr found < %v > on the stack",
+					intrinsicStr[a.Type],
 				)
 				return false
 			}
@@ -123,17 +128,17 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 			}
 			a := stack.pop(loc)
 			b := stack.pop(loc)
-			if b != TokenInt && a != TokenInt {
+			if b.Type != TokenInt && a.Type != TokenInt {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 2 ints found < %v %v > on the stack",
-					intrinsicStr[a],
-					intrinsicStr[b],
+					intrinsicStr[a.Type],
+					intrinsicStr[b.Type],
 				)
 				return false
 			}
-			stack.push(TokenInt)
-			stack.push(TokenInt)
+			stack.push(TypeInfo{TokenInt, TokenInt})
+			stack.push(TypeInfo{TokenInt, TokenInt})
 		case TokenSwap:
 			if stack.len() < 2 {
 				printCompilerErrorInstrinsic(
@@ -152,9 +157,9 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 				)
 				return false
 			}
-            a := stack.pop(loc)
-            stack.push(a)
-            stack.push(a)
+			a := stack.pop(loc)
+			stack.push(a)
+			stack.push(a)
 		case TokenDrop:
 			if stack.len() < 1 {
 				printCompilerErrorInstrinsic(
@@ -184,16 +189,16 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 			}
 			a := stack.pop(loc)
 			b := stack.pop(loc)
-			if b != TokenInt && a != TokenInt {
+			if b.Type != TokenInt && a.Type != TokenInt {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 2 bools found < %v %v > on the stack",
-					intrinsicStr[a],
-					intrinsicStr[b],
+					intrinsicStr[a.Type],
+					intrinsicStr[b.Type],
 				)
 				return false
 			}
-			stack.push(TokenBool)
+			stack.push(TypeInfo{TokenBool, TokenBool})
 		case TokenGe:
 			if stack.len() < 2 {
 				printCompilerErrorInstrinsic(
@@ -205,16 +210,16 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 			}
 			a := stack.pop(loc)
 			b := stack.pop(loc)
-			if b != TokenInt && a != TokenInt {
+			if b.Type != TokenInt && a.Type != TokenInt {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 2 bools found < %v %v > on the stack",
-					intrinsicStr[a],
-					intrinsicStr[b],
+					intrinsicStr[a.Type],
+					intrinsicStr[b.Type],
 				)
 				return false
 			}
-			stack.push(TokenBool)
+			stack.push(TypeInfo{TokenBool, TokenBool})
 		case TokenLt:
 			if stack.len() < 2 {
 				printCompilerErrorInstrinsic(
@@ -226,16 +231,16 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 			}
 			a := stack.pop(loc)
 			b := stack.pop(loc)
-			if b != TokenInt && a != TokenInt {
+			if b.Type != TokenInt && a.Type != TokenInt {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 2 bools found < %v %v > on the stack",
-					intrinsicStr[a],
-					intrinsicStr[b],
+					intrinsicStr[a.Type],
+					intrinsicStr[b.Type],
 				)
 				return false
 			}
-			stack.push(TokenBool)
+			stack.push(TypeInfo{TokenBool, TokenBool})
 		case TokenLe:
 			if stack.len() < 2 {
 				printCompilerErrorInstrinsic(
@@ -247,16 +252,16 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 			}
 			a := stack.pop(loc)
 			b := stack.pop(loc)
-			if b != TokenInt && a != TokenInt {
+			if b.Type != TokenInt && a.Type != TokenInt {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 2 bools found < %v %v > on the stack",
-					intrinsicStr[a],
-					intrinsicStr[b],
+					intrinsicStr[a.Type],
+					intrinsicStr[b.Type],
 				)
 				return false
 			}
-			stack.push(TokenBool)
+			stack.push(TypeInfo{TokenBool, TokenBool})
 		case TokenEq:
 			if stack.len() < 2 {
 				printCompilerErrorInstrinsic(
@@ -268,16 +273,16 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 			}
 			a := stack.pop(loc)
 			b := stack.pop(loc)
-			if b != TokenInt && a != TokenInt {
+			if b.Type != TokenInt && a.Type != TokenInt {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 2 bools found < %v %v > on the stack",
-					intrinsicStr[a],
-					intrinsicStr[b],
+					intrinsicStr[a.Type],
+					intrinsicStr[b.Type],
 				)
 				return false
 			}
-			stack.push(TokenBool)
+			stack.push(TypeInfo{TokenBool, TokenBool})
 		case TokenFor:
 		case TokenDo:
 			if stack.len() < 1 {
@@ -289,11 +294,11 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 				return false
 			}
 			a := stack.pop(loc)
-			if a != TokenBool && a != TokenInt {
+			if a.Type != TokenBool && a.Type != TokenInt {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 1 bools found < %v > on the stack",
-					intrinsicStr[a],
+					intrinsicStr[a.Type],
 				)
 				return false
 			}
@@ -307,11 +312,11 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 				return false
 			}
 			a := stack.pop(loc)
-			if !(a == TokenBool || a == TokenInt) {
+			if !(a.Type == TokenBool || a.Type == TokenInt) {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 1 bools found < %v > on the stack",
-					intrinsicStr[a],
+					intrinsicStr[a.Type],
 				)
 				return false
 			}
@@ -327,15 +332,15 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 				return false
 			}
 			a := stack.pop(loc)
-			if a != TokenPtr {
+			if a.Type != TokenPtr {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 1 ptr found < %v > on the stack",
-					intrinsicStr[a],
+					intrinsicStr[a.Type],
 				)
 				return false
 			}
-			stack.push(TokenInt)
+			stack.push(TypeInfo{token.Kind, token.Kind})
 		case TokenWrite:
 			if stack.len() < 2 {
 				printCompilerErrorInstrinsic(
@@ -345,14 +350,23 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 				)
 				return false
 			}
-			b := stack.pop(loc)
-			a := stack.pop(loc)
-			if a != TokenPtr {
+			value := stack.pop(loc)
+			varr := stack.pop(loc)
+			if varr.Type != TokenPtr {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 1 ptr and 1 int found < %v %v > on the stack",
-					intrinsicStr[b],
-					intrinsicStr[a],
+					intrinsicStr[value.Type],
+					intrinsicStr[varr.Type],
+				)
+				return false
+			} else if varr.Kind == TokenBool && value.Kind == TokenInt {
+			} else if varr.Kind != value.Type {
+				printCompilerErrorInstrinsic(
+					token,
+					"trying to write a value of type %v into type variable %v",
+					intrinsicStr[value.Type],
+					intrinsicStr[varr.Kind],
 				)
 				return false
 			}
@@ -377,7 +391,12 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 		case TokenMacro:
 		case TokenVar:
 		case TokenWord:
-            stack.push(TokenPtr)
+			stack.push(
+				TypeInfo{
+					Type: TokenPtr,
+					Kind: token.Kind,
+				},
+			)
 		}
 	}
 	return true
@@ -417,6 +436,7 @@ var intrinsicStr = map[TokenType]string{
 	TokenSyscall1: "TokenSyscall1",
 	TokenSyscall3: "TokenSyscall3",
 	TokenMacro:    "TokenMacro",
+	TokenMacroEnd: "TokenMacroEnd",
 	TokenVar:      "TokenVar",
 	TokenRead:     "TokenRead",
 	TokenWrite:    "TokenWrite",

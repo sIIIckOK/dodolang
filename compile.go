@@ -365,9 +365,16 @@ func compileProgram(strTokens []StringToken, tokens []Token, state *CompileState
 	}
 	blockStack := make([]TokenType, 0, 0)
 
-	assert(TokenCount == 29, "Exhaustive switch case for CompileProgram")
-	for i := 0; i < len(tokens); i++ {
-		token := tokens[i]
+	var currentTokenBuffer *[]Token = &tokens
+	mainBufferLen := len(tokens)
+	bufferLen := len(tokens)
+	savedIdx := 0
+	var currentMacroBuffer []Token
+	macroMode := false
+
+	assert(TokenCount == 30, "Exhaustive switch case for CompileProgram")
+	for i := 0; i < bufferLen; i++ {
+		token := (*currentTokenBuffer)[i]
 		switch token.Type {
 		case TokenInt:
 
@@ -532,15 +539,23 @@ func compileProgram(strTokens []StringToken, tokens []Token, state *CompileState
 			}
 		case TokenSyscall3:
 			writeStr := compileTokenSyscall3()
-
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
 				log.Fatalln(err)
 			}
-		case TokenMacro:
-			blockStack = append(blockStack, TokenMacro)
-		case TokenVar:
-			assert(false, "TokenVar unreachable")
+		case TokenMacro, TokenVar: // these should be removed in the parsing stage
+			assert(false, "TokenMacro unreachable")
+		case TokenMacroEnd:
+			if !macroMode {
+				assert(
+					false, "TokenMacroEnd unreachable, "+
+						"cannot have macro-end outside macro definition",
+				)
+			}
+			macroMode = false
+			i = savedIdx
+			currentTokenBuffer = &tokens
+			bufferLen = mainBufferLen
 		case TokenRead:
 			writeStr := compileTokenRead()
 			_, err := f.Write([]byte(writeStr))
@@ -554,8 +569,9 @@ func compileProgram(strTokens []StringToken, tokens []Token, state *CompileState
 				log.Fatalln(err)
 			}
 		case TokenWord:
-			curTok := strTokens[tokens[i].Operand]
+			curTok := strTokens[token.Operand]
 			tokenName := curTok.Content
+			f.Write([]byte(fmt.Sprintf(";-- TokenWord: %v --\n", tokenName)))
 			macroToks, macroFound := globalMacroTable[tokenName]
 			varTok, varFound := globalVarsTable[tokenName]
 			if macroFound && varFound {
@@ -566,7 +582,17 @@ func compileProgram(strTokens []StringToken, tokens []Token, state *CompileState
 				)
 			}
 			if macroFound {
-				compileMacro(f, strTokens, macroToks, state)
+				if macroMode {
+					fmt.Printf("%v:%v:%v ", token.Loc.FilePath, token.Loc.Line, token.Loc.Col)
+					fmt.Println("calling macros inside other macros is not supported yet")
+					os.Exit(1)
+				}
+				macroMode = true
+				savedIdx = i
+				i = -1
+				currentMacroBuffer = macroToks
+				currentTokenBuffer = &currentMacroBuffer
+				bufferLen = len(macroToks)
 			} else if varFound {
 				writeStr := compileTokenVar(uintptr(varTok.Operand))
 				_, err := f.Write([]byte(writeStr))
@@ -575,7 +601,8 @@ func compileProgram(strTokens []StringToken, tokens []Token, state *CompileState
 				}
 			} else {
 				fmt.Printf("%v:%v:%v ", curTok.Loc.FilePath, curTok.Loc.Line, curTok.Loc.Col)
-				fmt.Printf("Undefined TokenWord %v\n", tokenName)
+				fmt.Printf("Undefined TokenWord `%v`\n", tokenName)
+				os.Exit(0)
 			}
 		default:
 			assert(false, "CompileProgram unreachable")

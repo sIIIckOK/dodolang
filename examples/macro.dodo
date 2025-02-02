@@ -1,10 +1,17 @@
+var a int end
+a 167772160 ! //this is the magic number for char '\n' as this languages does not have char lenght variables yet
+
+macro putln
+    4 a 0 1 syscall3
+end
+
 macro count
-    0 for dup rot dup rot > do
+    0 for dup rot dup rot >= do
         swap dup print
         1 +
     end
 end
 
-15 count
 10 count
-
+putln
+5 count

@@ -42,6 +42,7 @@ const (
 	TokenDup
 	TokenDrop
 	TokenMacro
+    TokenMacroEnd
 	TokenEq
 	TokenGt
 	TokenLt
