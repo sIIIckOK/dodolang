@@ -6,7 +6,8 @@ This is a concatenative stack-based programming language written in golang inspi
 stability and security guaranteed.
 
 ## Supported Platforms
-- x86 linux only
+- x86_64 linux only
+as it uses syscall mechanism from linux, which is more unstable in windows, so this language will most likely not be implemented for windows
 
 ## Prerequisites
 - go compiler
@@ -29,6 +30,9 @@ Additionally, you can learn more about concatenative languages from here:
 In its current form it is a very limited language, which compiles down to native x86_64 assembly similar to porth, and it uses the Nasm assembler to assemble it down to statically linked bytecode. It is static as it utilizes system-calls' instead of linking to a dynamic library.
 
 # What has to come (this list might change)
-- macros and functions
-- memory manipulation
-- Compile time type checking
+- functions
+- more complex type checking with for loops, if else statements, and functions
+- way to include other files
+- a way to use dynamic memory
+- different sized variables (for now all variables are 64 bits)
+- ir representation for opportunity for optimization (long term)
