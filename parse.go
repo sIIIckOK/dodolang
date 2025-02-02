@@ -13,18 +13,20 @@ var tokenKindStr = map[string]TokenType{
 }
 
 func parseTokens(strTokens []StringToken, state *CompileState) []Token {
-	var mainTokenBuffer []Token
-	var macroTokenBuffer []Token
-	var currentTokenBuffer *[]Token = &mainTokenBuffer
-	macroMode := false
-	var macroEndStack int
-	var currentMacroName string
-	var t Token
+	var (
+		mainTokenBuffer    []Token
+		macroTokenBuffer   []Token
+		currentTokenBuffer *[]Token = &mainTokenBuffer
+		macroMode          bool
+		macroEndStack      int
+		currentMacroName   string
+		t                  Token
+	)
 	if len(strTokens) == 0 {
 		return mainTokenBuffer
 	}
 	t.Loc.FilePath = strTokens[0].Loc.FilePath
-	assert(TokenCount == 30, "Exhaustive switch case for ParseToken")
+	assert(TokenCount == 32, "Exhaustive switch case for ParseToken")
 
 	for i := 0; i < len(strTokens); i++ {
 		strTok := strTokens[i]
@@ -33,11 +35,11 @@ func parseTokens(strTokens []StringToken, state *CompileState) []Token {
 		}
 		mapTok, exists := tokenStr[strTok.Content]
 		if macroMode && mapTok == TokenEnd && macroEndStack == 0 {
-            t.Type = TokenMacroEnd
-            macroTokenBuffer = append(macroTokenBuffer, t)
+			t.Type = TokenMacroEnd
+			macroTokenBuffer = append(macroTokenBuffer, t)
 			globalMacroTable[currentMacroName] = macroTokenBuffer
 			currentTokenBuffer = &mainTokenBuffer
-            macroTokenBuffer = []Token{}
+			macroTokenBuffer = []Token{}
 			macroMode = false
 			continue
 		}
@@ -59,7 +61,7 @@ func parseTokens(strTokens []StringToken, state *CompileState) []Token {
 			macroMode = true
 			macroEndStack = 0
 			currentMacroName = strTokens[i+1].Content
-            i++
+			i++
 			continue
 		}
 		if exists && mapTok == TokenVar {
@@ -199,15 +201,17 @@ var tokenStr = map[string]TokenType{
 	"@":        TokenRead,
 	"!":        TokenWrite,
 	"var":      TokenVar,
+	"true":     TokenTrue,
+	"false":    TokenFalse,
 }
 
 func printTokens(ts []Token) {
-    for _, v := range ts {
-        typ, found := intrinsicStr[v.Type]
-        if found {
-            fmt.Printf("%v: %+v\n", typ, v)
-        } else {
-            fmt.Printf("%v: %+v\n", "[INVALID_TYPE]", v)
-        }
-    }
+	for _, v := range ts {
+		typ, found := intrinsicStr[v.Type]
+		if found {
+			fmt.Printf("%v: %+v\n", typ, v)
+		} else {
+			fmt.Printf("%v: %+v\n", "[INVALID_TYPE]", v)
+		}
+	}
 }

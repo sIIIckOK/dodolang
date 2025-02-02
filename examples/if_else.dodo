@@ -1,7 +1,7 @@
-// 1 = true
-// 0 = false
+var x bool end
+x false !
 
-0 if
+x @ if
     69 print
 else
     420 print

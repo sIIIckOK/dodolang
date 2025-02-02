@@ -11,14 +11,14 @@
 end
 
 // if else
-// booleans are 1 (true) and 0 (false) for now, later they will be type checked and use `true` and `false`
-1 if 
+// booleans are true and false and are type checked
+true if 
     69 print
 else
     420 print
 end
 
-0 if 
+false if 
     69 print
 else
     420 print

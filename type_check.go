@@ -33,7 +33,7 @@ type TypeInfo struct {
 func typeCheck(strTokens []StringToken, tokens []Token) bool {
 	_ = strTokens
 	var stack TypeStack
-	assert(TokenCount == 30, "Exhaustive switch case for typeCheck")
+	assert(TokenCount == 32, "Exhaustive switch case for typeCheck")
 	for i := 0; i < len(tokens); i++ {
 		token := tokens[i]
 		loc := token.Loc
@@ -178,6 +178,10 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 				)
 				return false
 			}
+		case TokenTrue:
+			stack.push(TypeInfo{TokenBool, TokenBool})
+		case TokenFalse:
+			stack.push(TypeInfo{TokenBool, TokenBool})
 		case TokenGt:
 			if stack.len() < 2 {
 				printCompilerErrorInstrinsic(
@@ -312,7 +316,7 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 				return false
 			}
 			a := stack.pop(loc)
-			if !(a.Type == TokenBool || a.Type == TokenInt) {
+			if !(a.Type == TokenBool) {
 				printCompilerErrorInstrinsic(
 					token,
 					"takes 1 bools found < %v > on the stack",
@@ -360,7 +364,6 @@ func typeCheck(strTokens []StringToken, tokens []Token) bool {
 					intrinsicStr[varr.Type],
 				)
 				return false
-			} else if varr.Kind == TokenBool && value.Kind == TokenInt {
 			} else if varr.Kind != value.Type {
 				printCompilerErrorInstrinsic(
 					token,
@@ -441,4 +444,6 @@ var intrinsicStr = map[TokenType]string{
 	TokenRead:     "TokenRead",
 	TokenWrite:    "TokenWrite",
 	TokenWord:     "TokenWord",
+	TokenTrue:     "TokenTrue",
+	TokenFalse:    "TokenFalse",
 }

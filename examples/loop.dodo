@@ -1,12 +1,15 @@
-0 for dup 100 < do
-    dup 5 divmod swap drop 0 = if
-        7155 print
-    end
-    dup 10 divmod swap drop 0 = if
-         8055 print
-    end
-    dup 15 divmod swap drop 0 = if
-        7155055 print
-    end
-    1 +
+macro exit
+    60 syscall1 // syscall exit
 end
+
+var x int end
+x 0 !
+
+for true do
+    x @ 10 > if // if x > 10 exit, there is `break` for loop yet
+        0 exit
+    end
+    x x @ 1 + ! // increment value in x
+    x @ print   // print x
+end
+

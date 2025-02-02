@@ -104,6 +104,24 @@ func compileTokenRot() string {
 	return retStr
 }
 
+func compileTokenTrue() string {
+	retStr := "; -- True --\n" +
+		"mov rax, 1\n" +
+		"push rax\n" +
+		""
+
+	return retStr
+}
+
+func compileTokenFalse() string {
+	retStr := "; -- False --\n" +
+		"mov rax, 0\n" +
+		"push rax\n" +
+		""
+
+	return retStr
+}
+
 func compileTokenGt(state *CompileState) string {
 	retStr := "; -- Gt --\n" +
 		"pop rbx\n" +
@@ -372,7 +390,7 @@ func compileProgram(strTokens []StringToken, tokens []Token, state *CompileState
 	var currentMacroBuffer []Token
 	macroMode := false
 
-	assert(TokenCount == 30, "Exhaustive switch case for CompileProgram")
+	assert(TokenCount == 32, "Exhaustive switch case for CompileProgram")
 	for i := 0; i < bufferLen; i++ {
 		token := (*currentTokenBuffer)[i]
 		switch token.Type {
@@ -446,6 +464,20 @@ func compileProgram(strTokens []StringToken, tokens []Token, state *CompileState
 			}
 		case TokenRot:
 			writeStr := compileTokenRot()
+
+			_, err := f.Write([]byte(writeStr))
+			if err != nil {
+				log.Fatalln(err)
+			}
+		case TokenTrue:
+			writeStr := compileTokenTrue()
+
+			_, err := f.Write([]byte(writeStr))
+			if err != nil {
+				log.Fatalln(err)
+			}
+		case TokenFalse:
+			writeStr := compileTokenFalse()
 
 			_, err := f.Write([]byte(writeStr))
 			if err != nil {
